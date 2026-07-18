@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jogo VR - Detector de Mão com YouTube View</title>
+    <title>Jogo VR - Detector de Mão com Web View Real</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
@@ -21,15 +21,12 @@
             width: 100vw;
             height: 100vh;
         }
-        /* Câmera escondida para usarmos apenas o Canvas desenhado */
         #webcam {
             display: none;
         }
-        /* Tela cheia para o jogo */
         #canvas {
             width: 100%;
             height: 100%;
-            /* transform: scaleX(-1); <-- REMOVIDO: Não espelhar a câmera traseira */
         }
         /* Botão virtual estilo VR */
         #vr-button {
@@ -46,9 +43,9 @@
             border-radius: 15px;
             box-shadow: 0 0 20px #ff0064;
             text-shadow: 0 0 5px black;
-            pointer-events: none; /* Ignora o clique real do dedo na tela, só aceita o VR */
+            pointer-events: none; 
             transition: all 0.3s;
-            z-index: 10; /* Garante que o botão fique na frente de outros elementos */
+            z-index: 10; 
         }
         /* Contador flutuante */
         #timer-display {
@@ -64,19 +61,20 @@
             z-index: 10;
         }
 
-        /* --- NOVA ESTILIZAÇÃO: Web View (iframe) --- */
-        #youtube-view {
+        /* Web View (iframe) estilizada para VR */
+        #virtual-webview {
             position: absolute;
-            top: 50%;
+            top: 55%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 80%; /* Ocupa 80% da largura da tela */
-            height: 60%; /* Ocupa 60% da altura da tela */
+            width: 85%; 
+            height: 65%; 
             border: 5px solid #00ffcc;
             box-shadow: 0 0 30px #00ffcc;
             border-radius: 15px;
             display: none; /* Começa escondido */
-            z-index: 5; /* Fica atrás do botão e do contador, mas na frente da câmera */
+            z-index: 5; 
+            background: white; /* Fundo branco enquanto o site carrega */
         }
     </style>
 </head>
@@ -84,10 +82,10 @@
 
     <video id="webcam" autoplay playsinline></video>
     <canvas id="canvas"></canvas>
-    <div id="vr-button">ABRIR YOUTUBE</div>
+    <div id="vr-button">ABRIR SITE VR</div>
     <div id="timer-display">3</div>
 
-    <iframe id="youtube-view" src="" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+    <iframe id="virtual-webview" src="" frameborder="0" allowfullscreen></iframe>
 
     <script>
         const video = document.getElementById('webcam');
@@ -95,14 +93,13 @@
         const ctx = canvas.getContext('2d');
         const vrButton = document.getElementById('vr-button');
         const timerDisplay = document.getElementById('timer-display');
-        const youtubeView = document.getElementById('youtube-view'); // --- NOVO REFERÊNCIA ---
+        const virtualWebview = document.getElementById('virtual-webview'); 
 
         let hoverStartTime = null;
         let isHovering = false;
-        const TIME_TO_CLICK = 3000; // 3 segundos em milissegundos
-        let isYoutubeOpen = false; // --- NOVA VARIÁVEL DE ESTADO ---
+        const TIME_TO_CLICK = 3000; 
+        let isWebviewOpen = false; 
 
-        // Ajusta o tamanho do canvas para preencher a tela do celular
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -124,7 +121,7 @@
 
         hands.onResults(onResults);
 
-        // Ativa a câmera especificando que queremos a TRASEIRA ('environment')
+        // Ativa a câmera traseira ('environment')
         const camera = new Camera(video, {
             onFrame: async () => {
                 await hands.send({ image: video });
@@ -135,9 +132,7 @@
         });
         camera.start();
 
-        // Função que processa os pontos da mão na tela
         function onResults(results) {
-            // Desenha a imagem da câmera de fundo
             ctx.save();
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
@@ -148,10 +143,8 @@
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 const landmarks = results.multiHandLandmarks[0];
 
-                // Desenha os "ossos" (linhas conectando as dobradiças)
                 drawConnections(landmarks);
 
-                // Desenha os pontos das dobradiças
                 for (let i = 0; i < landmarks.length; i++) {
                     const pt = landmarks[i];
                     const x = pt.x * canvas.width;
@@ -159,23 +152,20 @@
 
                     ctx.beginPath();
                     ctx.arc(x, y, 6, 0, 2 * Math.PI);
-                    ctx.fillStyle = i === 8 ? '#00ffcc' : '#ff0064'; // Dedo indicador fica verde limão
+                    ctx.fillStyle = i === 8 ? '#00ffcc' : '#ff0064'; 
                     ctx.fill();
                 }
 
-                // Ponto número 8 é a ponta do Dedo Indicador
                 const indexFingerTip = landmarks[8];
                 
-                // Para câmera traseira, não precisamos inverter o X.
                 fingerX = indexFingerTip.x * canvas.width;
                 fingerY = indexFingerTip.y * canvas.height;
 
-                // Verifica se o indicador está em cima do botão, apenas se o YouTube não estiver aberto
-                if (!isYoutubeOpen) {
+                if (!isWebviewOpen) {
                     checkButtonHover(fingerX, fingerY);
                 }
             } else {
-                if (!isYoutubeOpen) {
+                if (!isWebviewOpen) {
                     resetTimer();
                 }
             }
@@ -183,19 +173,17 @@
             ctx.restore();
         }
 
-        // Função para desenhar as linhas entre os pontos da mão
         function drawConnections(landmarks) {
             ctx.strokeStyle = 'rgba(0, 255, 200, 0.8)';
             ctx.lineWidth = 4;
 
-            // Pares de pontos que se conectam para formar a mão
             const connections = [
-                [0,1], [1,2], [2,3], [3,4],       // Polegar
-                [0,5], [5,6], [6,7], [7,8],       // Indicador
-                [9,10], [10,11], [11,12],         // Médio
-                [13,14], [14,15], [15,16],        // Anelar
-                [0,17], [17,18], [18,19], [19,20],// Mínimo
-                [5,9], [9,13], [13,17]            // Palma
+                [0,1], [1,2], [2,3], [3,4],       
+                [0,5], [5,6], [6,7], [7,8],       
+                [9,10], [10,11], [11,12],         
+                [13,14], [14,15], [15,16],        
+                [0,17], [17,18], [18,19], [19,20],
+                [5,9], [9,13], [13,17]            
             ];
 
             connections.forEach(([p1, p2]) => {
@@ -208,11 +196,9 @@
             });
         }
 
-        // Função para detectar colisão com o botão virtual
         function checkButtonHover(fx, fy) {
             const btnRect = vrButton.getBoundingClientRect();
 
-            // Vê se a ponta do dedo está dentro do retângulo do botão
             if (fx >= btnRect.left && fx <= btnRect.right && fy >= btnRect.top && fy <= btnRect.bottom) {
                 if (!isHovering) {
                     isHovering = true;
@@ -223,7 +209,6 @@
                     timerDisplay.style.display = "block";
                 }
 
-                // Calcula o tempo restante
                 const elapsedTime = Date.now() - hoverStartTime;
                 const timeLeft = Math.ceil((TIME_TO_CLICK - elapsedTime) / 1000);
                 
@@ -231,17 +216,15 @@
                     timerDisplay.innerText = timeLeft;
                 }
 
-                // Se deu os 3 segundos, executa o "clique" VR!
                 if (elapsedTime >= TIME_TO_CLICK) {
                     resetTimer();
-                    openYoutubeView(); // --- NOVA FUNÇÃO ---
+                    openVirtualWebview(); 
                 }
             } else {
                 resetTimer();
             }
         }
 
-        // Reseta o jogo se tirar o dedo de cima
         function resetTimer() {
             isHovering = false;
             hoverStartTime = null;
@@ -251,13 +234,14 @@
             timerDisplay.style.display = "none";
         }
 
-        // --- NOVA FUNÇÃO: Abre a Web View do YouTube ---
-        function openYoutubeView() {
-            isYoutubeOpen = true;
-            vrButton.style.display = "none"; // Esconde o botão para não atrapalhar
-            // Define o link do YouTube incorporado (embed). Você pode mudar este link se quiser.
-            youtubeView.src = "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1"; 
-            youtubeView.style.display = "block"; // Mostra o iframe
+        // Abre a Web View com um site permitido (Ex: Bing)
+        function openVirtualWebview() {
+            isWebviewOpen = true;
+            vrButton.style.display = "none"; 
+            
+            // Trocado o YouTube pelo Bing, que aceita rodar dentro do iframe de boa!
+            virtualWebview.src = "https://www.bing.com"; 
+            virtualWebview.style.display = "block"; 
         }
     </script>
 </body>
