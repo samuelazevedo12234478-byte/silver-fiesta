@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jogo VR - Detector de Mão com Web View Real</title>
+    <title>Interface VR Customizada</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
@@ -13,13 +13,15 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            user-select: none;
         }
         body {
             background-color: #000;
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Arial, sans-serif;
             overflow: hidden;
             width: 100vw;
             height: 100vh;
+            color: white;
         }
         #webcam {
             display: none;
@@ -27,54 +29,160 @@
         #canvas {
             width: 100%;
             height: 100%;
-        }
-        /* Botão virtual estilo VR */
-        #vr-button {
             position: absolute;
-            top: 20%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 20px 40px;
-            font-size: 20px;
-            font-weight: bold;
-            color: white;
-            background: rgba(255, 0, 100, 0.6);
-            border: 3px solid #ff0064;
-            border-radius: 15px;
-            box-shadow: 0 0 20px #ff0064;
-            text-shadow: 0 0 5px black;
-            pointer-events: none; 
-            transition: all 0.3s;
-            z-index: 10; 
-        }
-        /* Contador flutuante */
-        #timer-display {
-            position: absolute;
-            top: 35%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 48px;
-            color: #00ffcc;
-            font-weight: bold;
-            text-shadow: 0 0 10px #00ffcc;
-            display: none;
-            z-index: 10;
+            top: 0;
+            left: 0;
+            z-index: 1;
         }
 
-        /* Web View (iframe) estilizada para VR */
-        #virtual-webview {
+        /* --- PAINEL VR FLUTUANTE CENTRALIZADO --- */
+        #vr-panel {
             position: absolute;
-            top: 55%;
+            top: 45%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 85%; 
-            height: 65%; 
-            border: 5px solid #00ffcc;
-            box-shadow: 0 0 30px #00ffcc;
+            width: 90%;
+            max-width: 500px;
+            background: rgba(20, 25, 35, 0.85);
+            border: 2px solid rgba(0, 255, 200, 0.4);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 255, 200, 0.2);
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+
+        .panel-section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #00ffcc;
+            margin-bottom: 12px;
+            font-weight: bold;
+        }
+
+        /* Linha de Ambientes/Cenários (Top) */
+        .environments-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        .env-card {
+            height: 55px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        /* Grade de Aplicativos (Bottom) */
+        .apps-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            justify-items: center;
+        }
+        .app-item {
+            width: 65px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+        .app-icon {
+            width: 45px;
+            height: 45px;
+            background: rgba(255, 0, 100, 0.6);
+            border: 2px solid #ff0064;
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(255, 0, 100, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .app-label {
+            font-size: 11px;
+            color: #ccc;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+        }
+
+        /* --- CONTADOR DE SELEÇÃO VR --- */
+        #vr-timer {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(0, 255, 200, 0.9);
+            color: #000;
+            font-weight: bold;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            pointer-events: none;
+            z-index: 100;
+            box-shadow: 0 0 15px #00ffcc;
+        }
+
+        /* --- JANELA FLUTUANTE (WEB VIEW INTERNA) --- */
+        #floating-browser {
+            position: absolute;
+            bottom: 5%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            height: 35%;
+            background: #111;
+            border: 3px solid #00ffcc;
             border-radius: 15px;
-            display: none; /* Começa escondido */
-            z-index: 5; 
-            background: white; /* Fundo branco enquanto o site carrega */
+            box-shadow: 0 0 25px rgba(0, 255, 200, 0.4);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 15;
+        }
+        .browser-header {
+            background: #222;
+            padding: 8px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            border-bottom: 1px solid #333;
+        }
+        .close-btn {
+            color: #ff0064;
+            font-weight: bold;
+            padding: 2px 8px;
+            border: 1px solid #ff0064;
+            border-radius: 5px;
+        }
+        .browser-content {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: white;
+        }
+
+        /* Elementos interativos VR marcados para detecção */
+        .vr-interactive {
+            transition: all 0.2s ease;
         }
     </style>
 </head>
@@ -82,23 +190,64 @@
 
     <video id="webcam" autoplay playsinline></video>
     <canvas id="canvas"></canvas>
-    <div id="vr-button">ABRIR SITE VR</div>
-    <div id="timer-display">3</div>
 
-    <iframe id="virtual-webview" src="" frameborder="0" allowfullscreen></iframe>
+    <div id="vr-timer">3</div>
+
+    <div id="vr-panel">
+        <div class="panel-section">
+            <div class="section-title">Espaços Virtuais</div>
+            <div class="environments-grid">
+                <div class="env-card vr-interactive" data-action="env">Praia</div>
+                <div class="env-card vr-interactive" data-action="env">Cidade</div>
+                <div class="env-card vr-interactive" data-action="env">Espaço</div>
+                <div class="env-card vr-interactive" data-action="env">Deserto</div>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="section-title">Aplicações</div>
+            <div class="apps-grid">
+                <div class="app-item vr-interactive" data-action="app" data-url="https://www.wikipedia.org">
+                    <div class="app-icon">Wiki</div>
+                    <div class="app-label">Wikipedia</div>
+                </div>
+                <div class="app-item vr-interactive" data-action="app" data-url="https://www.bing.com">
+                    <div class="app-icon">Bing</div>
+                    <div class="app-label">Navegador</div>
+                </div>
+                <div class="app-item vr-interactive" data-action="app" data-url="https://eddmann.com">
+                    <div class="app-icon">Game</div>
+                    <div class="app-label">Mini Jogos</div>
+                </div>
+                <div class="app-item vr-interactive" data-action="close-panel">
+                    <div class="app-icon" style="background:rgba(80,80,80,0.6); border-color:#aaa;">Ocultar</div>
+                    <div class="app-label">Fechar</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="floating-browser">
+        <div class="browser-header">
+            <span id="browser-title">Navegador VR</span>
+            <div class="close-btn vr-interactive" data-action="close-browser">Fechar X</div>
+        </div>
+        <iframe id="browser-iframe" class="browser-content" src=""></iframe>
+    </div>
 
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const vrButton = document.getElementById('vr-button');
-        const timerDisplay = document.getElementById('timer-display');
-        const virtualWebview = document.getElementById('virtual-webview'); 
+        const vrTimer = document.getElementById('vr-timer');
+        const floatingBrowser = document.getElementById('floating-browser');
+        const browserIframe = document.getElementById('browser-iframe');
+        const browserTitle = document.getElementById('browser-title');
+        const vrPanel = document.getElementById('vr-panel');
 
+        let hoverElement = null;
         let hoverStartTime = null;
-        let isHovering = false;
-        const TIME_TO_CLICK = 3000; 
-        let isWebviewOpen = false; 
+        const TIME_TO_CLICK = 2000; // Reduzido para 2 segundos para ficar mais ágil
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -107,7 +256,6 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // Configuração do MediaPipe Hands
         const hands = new Hands({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
         });
@@ -115,20 +263,15 @@
         hands.setOptions({
             maxNumHands: 1,
             modelComplexity: 1,
-            minDetectionConfidence: 0.5,
-            minTrackingConfidence: 0.5
+            minDetectionConfidence: 0.6,
+            minTrackingConfidence: 0.6
         });
 
         hands.onResults(onResults);
 
-        // Ativa a câmera traseira ('environment')
         const camera = new Camera(video, {
-            onFrame: async () => {
-                await hands.send({ image: video });
-            },
-            width: 640,
-            height: 480,
-            facingMode: 'environment' 
+            onFrame: async () => { await hands.send({ image: video }); },
+            width: 640, height: 480, facingMode: 'environment'
         });
         camera.start();
 
@@ -137,45 +280,31 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
 
-            let fingerX = -1;
-            let fingerY = -1;
-
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 const landmarks = results.multiHandLandmarks[0];
 
-                drawConnections(landmarks);
+                // Desenha a estrutura estável da mão verde neon
+                drawNeonHand(landmarks);
 
-                for (let i = 0; i < landmarks.length; i++) {
-                    const pt = landmarks[i];
-                    const x = pt.x * canvas.width;
-                    const y = pt.y * canvas.height;
+                // Ponta do indicador (Landmark 8)
+                const indexTip = landmarks[8];
+                const fx = indexTip.x * canvas.width;
+                const fy = indexTip.y * canvas.height;
 
-                    ctx.beginPath();
-                    ctx.arc(x, y, 6, 0, 2 * Math.PI);
-                    ctx.fillStyle = i === 8 ? '#00ffcc' : '#ff0064'; 
-                    ctx.fill();
-                }
-
-                const indexFingerTip = landmarks[8];
-                
-                fingerX = indexFingerTip.x * canvas.width;
-                fingerY = indexFingerTip.y * canvas.height;
-
-                if (!isWebviewOpen) {
-                    checkButtonHover(fingerX, fingerY);
-                }
+                // Posiciona e atualiza o timer perto do dedo indicador
+                updateVrInteraction(fx, fy);
             } else {
-                if (!isWebviewOpen) {
-                    resetTimer();
-                }
+                resetVrTimer();
             }
-
             ctx.restore();
         }
 
-        function drawConnections(landmarks) {
-            ctx.strokeStyle = 'rgba(0, 255, 200, 0.8)';
+        // Desenha as conexões e articulações em Verde Neon limpo
+        function drawNeonHand(landmarks) {
+            ctx.strokeStyle = '#00ffcc';
             ctx.lineWidth = 4;
+            ctx.shadowColor = '#00ffcc';
+            ctx.shadowBlur = 8;
 
             const connections = [
                 [0,1], [1,2], [2,3], [3,4],       
@@ -187,62 +316,91 @@
             ];
 
             connections.forEach(([p1, p2]) => {
-                const pt1 = landmarks[p1];
-                const pt2 = landmarks[p2];
                 ctx.beginPath();
-                ctx.moveTo(pt1.x * canvas.width, pt1.y * canvas.height);
-                ctx.lineTo(pt2.x * canvas.width, pt2.y * canvas.height);
+                ctx.moveTo(landmarks[p1].x * canvas.width, landmarks[p1].y * canvas.height);
+                ctx.lineTo(landmarks[p2].x * canvas.width, landmarks[p2].y * canvas.height);
                 ctx.stroke();
+            });
+
+            // Restaura o blur para não borrar os círculos das articulações
+            ctx.shadowBlur = 0;
+
+            landmarks.forEach((pt) => {
+                ctx.beginPath();
+                ctx.arc(pt.x * canvas.width, pt.y * canvas.height, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#ff0064';
+                ctx.fill();
             });
         }
 
-        function checkButtonHover(fx, fy) {
-            const btnRect = vrButton.getBoundingClientRect();
+        function updateVrInteraction(x, y) {
+            // Encontra qual elemento sob a ponta do dedo possui a classe interativa
+            const element = document.elementFromPoint(x, y);
+            const interactiveEl = element ? element.closest('.vr-interactive') : null;
 
-            if (fx >= btnRect.left && fx <= btnRect.right && fy >= btnRect.top && fy <= btnRect.bottom) {
-                if (!isHovering) {
-                    isHovering = true;
+            if (interactiveEl) {
+                // Posiciona o contador visual um pouco acima do seu dedo indicador
+                vrTimer.style.display = 'flex';
+                vrTimer.style.left = `${x - 20}px`;
+                vrTimer.style.top = `${y - 60}px`;
+
+                if (hoverElement !== interactiveEl) {
+                    hoverElement = interactiveEl;
                     hoverStartTime = Date.now();
-                    vrButton.style.background = "rgba(0, 255, 200, 0.8)";
-                    vrButton.style.borderColor = "#00ffcc";
-                    vrButton.style.boxShadow = "0 0 30px #00ffcc";
-                    timerDisplay.style.display = "block";
+                    interactiveEl.style.transform = 'scale(1.1)';
                 }
 
-                const elapsedTime = Date.now() - hoverStartTime;
-                const timeLeft = Math.ceil((TIME_TO_CLICK - elapsedTime) / 1000);
-                
-                if (timeLeft >= 0) {
-                    timerDisplay.innerText = timeLeft;
+                const elapsed = Date.now() - hoverStartTime;
+                const remaining = Math.ceil((TIME_TO_CLICK - elapsed) / 1000);
+
+                if (remaining >= 0) {
+                    vrTimer.innerText = remaining;
                 }
 
-                if (elapsedTime >= TIME_TO_CLICK) {
-                    resetTimer();
-                    openVirtualWebview(); 
+                if (elapsed >= TIME_TO_CLICK) {
+                    triggerVrClick(interactiveEl);
+                    resetVrTimer();
                 }
             } else {
-                resetTimer();
+                resetVrTimer();
             }
         }
 
-        function resetTimer() {
-            isHovering = false;
+        function resetVrTimer() {
+            if (hoverElement) {
+                hoverElement.style.transform = 'scale(1)';
+            }
+            hoverElement = null;
             hoverStartTime = null;
-            vrButton.style.background = "rgba(255, 0, 100, 0.6)";
-            vrButton.style.borderColor = "#ff0064";
-            vrButton.style.boxShadow = "0 0 20px #ff0064";
-            timerDisplay.style.display = "none";
+            vrTimer.style.display = 'none';
         }
 
-        // Abre a Web View com um site permitido (Ex: Bing)
-        function openVirtualWebview() {
-            isWebviewOpen = true;
-            vrButton.style.display = "none"; 
+        // Executa a ação do botão selecionado pelo dedo
+        function triggerVrClick(element) {
+            const action = element.getAttribute('data-action');
             
-            // Trocado o YouTube pelo Bing, que aceita rodar dentro do iframe de boa!
-            virtualWebview.src = "https://www.bing.com"; 
-            virtualWebview.style.display = "block"; 
+            if (action === 'app') {
+                const url = element.getAttribute('data-url');
+                const label = element.querySelector('.app-label').innerText;
+                browserTitle.innerText = label;
+                browserIframe.src = url;
+                floatingBrowser.style.display = 'flex';
+            } 
+            else if (action === 'close-browser') {
+                floatingBrowser.style.display = 'none';
+                browserIframe.src = "";
+            }
+            else if (action === 'close-panel') {
+                vrPanel.style.opacity = '0.1'; // Minimiza o menu principal
+            }
+            else if (action === 'env') {
+                // Altera o feedback visual do card de cenário selecionado
+                element.style.background = 'rgba(0, 255, 200, 0.4)';
+                setTimeout(() => { element.style.background = 'rgba(255, 255, 255, 0.1)'; }, 1000);
+                vrPanel.style.opacity = '1'; // Abre novamente o menu se estiver transparente
+            }
         }
     </script>
 </body>
 </html>
+
