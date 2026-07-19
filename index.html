@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Botão AR Flutuante no Espaço</title>
+    <title>Rastreamento de Mão - Abrir YouTube</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
@@ -33,27 +33,10 @@
             left: 0;
             z-index: 1;
         }
-        /* Botão necessário para pedir permissão dos sensores no iOS */
-        #permissionBtn {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-            padding: 12px 24px;
-            background-color: #00ffcc;
-            color: #000;
-            border: none;
-            border-radius: 20px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 0 15px #00ffcc;
-        }
     </style>
 </head>
 <body>
 
-    <button id="permissionBtn" onclick="requestOrientationPermission()">Ativar Modo Realidade Aumentada</button>
     <video id="webcam" autoplay playsinline></video>
     <canvas id="canvas"></canvas>
 
@@ -61,81 +44,28 @@
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const permissionBtn = document.getElementById('permissionBtn');
 
-        // Posição base do botão no centro do mundo virtual
-        const buttonWorld = {
-            x: 0, 
-            y: 0,
-            width: 180,
-            height: 60,
+        // Definições do Botão do YouTube
+        const button = {
+            x: 50,          // Posição X (canto esquerdo)
+            y: 50,          // Posição Y (topo)
+            width: 180,     // Largura
+            height: 60,     // Altura
             label: 'YouTube'
         };
 
-        // Variáveis de orientação do celular (Giroscópio)
-        let initialAlpha = null;
-        let initialBeta = null;
-        let currentAlpha = 0;
-        let currentBeta = 0;
-
-        // Sensibilidade do movimento (ajuste se achar que ele move muito ou pouco)
-        const sensitivity = 15; 
-
-        // Controle do Timer de Toque
+        // Variáveis de controle do Timer
         let hoverStartTime = null;
-        const hoverDuration = 2000; 
+        const hoverDuration = 2000; // 2 segundos em milissegundos
         let progress = 0;
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            // Centraliza a posição inicial do mundo no meio da tela
-            buttonWorld.x = canvas.width / 2 - buttonWorld.width / 2;
-            buttonWorld.y = canvas.height / 2 - buttonWorld.height / 2;
         }
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // --- LÓGICA DO GIROSCÓPIO ---
-        function requestOrientationPermission() {
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                // iOS 13+ exige permissão explícita
-                DeviceOrientationEvent.requestPermission()
-                    .then(permissionState => {
-                        if (permissionState === 'granted') {
-                            window.addEventListener('deviceorientation', handleOrientation);
-                            permissionBtn.style.display = 'none';
-                        }
-                    })
-                    .catch(console.error);
-            } else {
-                // Android e outros navegadores antigos
-                window.addEventListener('deviceorientation', handleOrientation);
-                permissionBtn.style.display = 'none';
-            }
-        }
-
-        function handleOrientation(event) {
-            // Guarda a rotação inicial como o "ponto zero" do espaço real
-            if (initialAlpha === null && event.alpha !== null) {
-                initialAlpha = event.alpha;
-                initialBeta = event.beta;
-            }
-
-            // Calcula a diferença de rotação de quando você iniciou
-            if (initialAlpha !== null) {
-                // Direita / Esquerda (Yaw)
-                let diffAlpha = event.alpha - initialAlpha;
-                if (diffAlpha > 180) diffAlpha -= 360;
-                if (diffAlpha < -180) diffAlpha += 360;
-                currentAlpha = diffAlpha;
-
-                // Cima / Baixo (Pitch)
-                currentBeta = event.beta - initialBeta;
-            }
-        }
-
-        // --- CONFIGURAÇÃO MEDIAPIPE ---
         const hands = new Hands({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
         });
@@ -159,11 +89,12 @@
             ctx.save();
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Espelhamento da câmera de fundo
+            // Espelhamento para movimentação natural da mão
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
             ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
 
+            // Desenhamos o esqueleto da mão primeiro (dentro do contexto espelhado)
             let fingerTipX = null;
             let fingerTipY = null;
 
@@ -171,45 +102,42 @@
                 const landmarks = results.multiHandLandmarks[0];
                 drawNeonHand(landmarks);
 
-                // Landmark 8 (Ponta do indicador)
+                // Landmark 8 é a ponta do indicador
                 const indexTip = landmarks[8];
+                
+                // Como o canvas está espelhado na horizontal, calculamos a posição real na tela:
                 fingerTipX = (1 - indexTip.x) * canvas.width;
                 fingerTipY = indexTip.y * canvas.height;
             }
 
+            // Restauramos o contexto para desenhar a interface (botão e barra de carregamento) sem espelhar o texto
             ctx.restore();
 
-            // Desenhamos a interface que se move com os sensores
-            drawARInterface(fingerTipX, fingerTipY);
+            drawInterface(fingerTipX, fingerTipY);
         }
 
-        function drawARInterface(fingerX, fingerY) {
-            // Calcula o deslocamento do botão baseado em como você inclina o telefone
-            // Se você virar o celular para a esquerda (alpha positivo), o botão se move para a direita na tela
-            const offsetX = currentAlpha * sensitivity;
-            const offsetY = currentBeta * sensitivity;
-
-            // Posição final recalculada do botão na tela atual
-            const btnX = buttonWorld.x + offsetX;
-            const btnY = buttonWorld.y + offsetY;
-
+        function drawInterface(fingerX, fingerY) {
             let isHovering = false;
 
-            // Verifica colisão do dedo com a nova posição flutuante do botão
+            // Verifica se o dedo está dentro do botão
             if (fingerX !== null && fingerY !== null) {
-                if (fingerX >= btnX && fingerX <= btnX + buttonWorld.width &&
-                    fingerY >= btnY && fingerY <= btnY + buttonWorld.height) {
+                if (fingerX >= button.x && fingerX <= button.x + button.width &&
+                    fingerY >= button.y && fingerY <= button.y + button.height) {
                     isHovering = true;
                 }
             }
 
-            // Lógica do Timer
+            // Lógica do Timer de 2 segundos
             if (isHovering) {
-                if (!hoverStartTime) hoverStartTime = Date.now();
+                if (!hoverStartTime) {
+                    hoverStartTime = Date.now();
+                }
+                
                 const elapsedTime = Date.now() - hoverStartTime;
                 progress = Math.min(elapsedTime / hoverDuration, 1);
 
                 if (elapsedTime >= hoverDuration) {
+                    // Reset do timer para não abrir infinitamente e redireciona
                     hoverStartTime = null; 
                     progress = 0;
                     window.open('https://www.youtube.com', '_blank');
@@ -219,13 +147,15 @@
                 progress = 0;
             }
 
-            // --- DESENHO DO BOTÃO FLUTUANTE ---
+            // --- DESENHO DO BOTÃO ---
+            // Sombra/Neon do Botão
             ctx.shadowBlur = 15;
             ctx.shadowColor = isHovering ? '#ff0000' : '#cc0000';
-            ctx.fillStyle = isHovering ? '#ff0000' : '#ff3333';
             
+            // Fundo do botão (Vermelho YouTube)
+            ctx.fillStyle = isHovering ? '#ff0000' : '#ff3333';
             ctx.beginPath();
-            ctx.roundRect(btnX, btnY, buttonWorld.width, buttonWorld.height, 10);
+            ctx.roundRect(button.x, button.y, button.width, button.height, 10);
             ctx.fill();
 
             // Texto do Botão
@@ -234,12 +164,12 @@
             ctx.font = 'bold 20px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(buttonWorld.label, btnX + buttonWorld.width / 2, btnY + buttonWorld.height / 2);
+            ctx.fillText(button.label, button.x + button.width / 2, button.y + button.height / 2);
 
-            // Barra de carregamento neon acompanhando o botão flutuante
+            // --- BARRA DE PROGRESSO (FEEDBACK VISUAL) ---
             if (progress > 0) {
-                ctx.fillStyle = '#00ffcc';
-                ctx.fillRect(btnX, btnY + buttonWorld.height + 5, buttonWorld.width * progress, 6);
+                ctx.fillStyle = '#00ffcc'; // Cor neon idêntica à da sua mão
+                ctx.fillRect(button.x, button.y + button.height + 5, button.width * progress, 6);
             }
         }
 
