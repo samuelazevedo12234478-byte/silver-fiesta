@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Botão AR Flutuante no Espaço</title>
+    <title>Botão 3D Estilo Meta Quest 3</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
@@ -33,7 +33,6 @@
             left: 0;
             z-index: 1;
         }
-        /* Botão necessário para pedir permissão dos sensores no iOS */
         #permissionBtn {
             position: absolute;
             top: 20px;
@@ -53,7 +52,7 @@
 </head>
 <body>
 
-    <button id="permissionBtn" onclick="requestOrientationPermission()">Ativar Modo Realidade Aumentada</button>
+    <button id="permissionBtn" onclick="requestOrientationPermission()">Ativar Modo Meta Quest (AR)</button>
     <video id="webcam" autoplay playsinline></video>
     <canvas id="canvas"></canvas>
 
@@ -63,23 +62,21 @@
         const ctx = canvas.getContext('2d');
         const permissionBtn = document.getElementById('permissionBtn');
 
-        // Posição base do botão no centro do mundo virtual
-        const buttonWorld = {
-            x: 0, 
-            y: 0,
-            width: 180,
-            height: 60,
+        // Configurações do Botão 3D no espaço (retângulo fino com profundidade)
+        const button3D = {
+            width: 200,
+            height: 70,
+            depth: 25, // Espessura/profundidade do botão para ver os lados
             label: 'YouTube'
         };
 
-        // Variáveis de orientação do celular (Giroscópio)
+        // Variáveis de orientação (Giroscópio)
         let initialAlpha = null;
         let initialBeta = null;
         let currentAlpha = 0;
         let currentBeta = 0;
 
-        // Sensibilidade do movimento (ajuste se achar que ele move muito ou pouco)
-        const sensitivity = 15; 
+        const sensitivity = 18; 
 
         // Controle do Timer de Toque
         let hoverStartTime = null;
@@ -89,53 +86,39 @@
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            // Centraliza a posição inicial do mundo no meio da tela
-            buttonWorld.x = canvas.width / 2 - buttonWorld.width / 2;
-            buttonWorld.y = canvas.height / 2 - buttonWorld.height / 2;
         }
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // --- LÓGICA DO GIROSCÓPIO ---
         function requestOrientationPermission() {
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                // iOS 13+ exige permissão explícita
                 DeviceOrientationEvent.requestPermission()
                     .then(permissionState => {
                         if (permissionState === 'granted') {
                             window.addEventListener('deviceorientation', handleOrientation);
                             permissionBtn.style.display = 'none';
                         }
-                    })
-                    .catch(console.error);
+                    }).catch(console.error);
             } else {
-                // Android e outros navegadores antigos
                 window.addEventListener('deviceorientation', handleOrientation);
                 permissionBtn.style.display = 'none';
             }
         }
 
         function handleOrientation(event) {
-            // Guarda a rotação inicial como o "ponto zero" do espaço real
             if (initialAlpha === null && event.alpha !== null) {
                 initialAlpha = event.alpha;
                 initialBeta = event.beta;
             }
-
-            // Calcula a diferença de rotação de quando você iniciou
             if (initialAlpha !== null) {
-                // Direita / Esquerda (Yaw)
                 let diffAlpha = event.alpha - initialAlpha;
                 if (diffAlpha > 180) diffAlpha -= 360;
                 if (diffAlpha < -180) diffAlpha += 360;
                 currentAlpha = diffAlpha;
-
-                // Cima / Baixo (Pitch)
                 currentBeta = event.beta - initialBeta;
             }
         }
 
-        // --- CONFIGURAÇÃO MEDIAPIPE ---
         const hands = new Hands({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
         });
@@ -159,7 +142,6 @@
             ctx.save();
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Espelhamento da câmera de fundo
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
             ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
@@ -171,34 +153,39 @@
                 const landmarks = results.multiHandLandmarks[0];
                 drawNeonHand(landmarks);
 
-                // Landmark 8 (Ponta do indicador)
                 const indexTip = landmarks[8];
                 fingerTipX = (1 - indexTip.x) * canvas.width;
                 fingerTipY = indexTip.y * canvas.height;
             }
 
             ctx.restore();
-
-            // Desenhamos a interface que se move com os sensores
-            drawARInterface(fingerTipX, fingerTipY);
+            drawMetaQuestInterface(fingerTipX, fingerTipY);
         }
 
-        function drawARInterface(fingerX, fingerY) {
-            // Calcula o deslocamento do botão baseado em como você inclina o telefone
-            // Se você virar o celular para a esquerda (alpha positivo), o botão se move para a direita na tela
+        function drawMetaQuestInterface(fingerX, fingerY) {
+            // Centro da tela como ponto de fuga/perspectiva
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // Deslocamento da posição baseado no giroscópio
             const offsetX = currentAlpha * sensitivity;
             const offsetY = currentBeta * sensitivity;
 
-            // Posição final recalculada do botão na tela atual
-            const btnX = buttonWorld.x + offsetX;
-            const btnY = buttonWorld.y + offsetY;
+            // Posição da face FRONTAL do botão
+            const frontX = centerX - button3D.width / 2 + offsetX;
+            const frontY = centerY - button3D.height / 2 + offsetY;
 
+            // Posição da face TRASEIRA (projeção 3D baseada no ângulo de visão)
+            // Quanto mais para o lado o botão vai, mais a face traseira se desloca criando a perspectiva das laterais
+            const perspectiveFactor = 0.4; 
+            const backX = frontX + (offsetX * perspectiveFactor);
+            const backY = frontY + (offsetY * perspectiveFactor);
+
+            // Verifica colisão do indicador apenas com a face frontal (onde você toca)
             let isHovering = false;
-
-            // Verifica colisão do dedo com a nova posição flutuante do botão
             if (fingerX !== null && fingerY !== null) {
-                if (fingerX >= btnX && fingerX <= btnX + buttonWorld.width &&
-                    fingerY >= btnY && fingerY <= btnY + buttonWorld.height) {
+                if (fingerX >= frontX && fingerX <= frontX + button3D.width &&
+                    fingerY >= frontY && fingerY <= frontY + button3D.height) {
                     isHovering = true;
                 }
             }
@@ -219,27 +206,76 @@
                 progress = 0;
             }
 
-            // --- DESENHO DO BOTÃO FLUTUANTE ---
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = isHovering ? '#ff0000' : '#cc0000';
-            ctx.fillStyle = isHovering ? '#ff0000' : '#ff3333';
-            
-            ctx.beginPath();
-            ctx.roundRect(btnX, btnY, buttonWorld.width, buttonWorld.height, 10);
-            ctx.fill();
+            // Cores baseadas no toque
+            const faceColor = isHovering ? '#ff1a1a' : '#cc0000';
+            const sideColor = isHovering ? '#990000' : '#800000';
+            const topColor = isHovering ? '#cc0000' : '#b30000';
 
-            // Texto do Botão
+            // --- DESENHO DAS LATERAIS 3D (Extrusão) ---
+            
+            // Lateral Esquerda ou Direita (depende de onde você olha)
+            ctx.fillStyle = sideColor;
+            ctx.beginPath();
+            ctx.moveTo(backX, backY);
+            ctx.lineTo(frontX, frontY);
+            ctx.lineTo(frontX, frontY + button3D.height);
+            ctx.lineTo(backX, backY + button3D.height);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(backX + button3D.width, backY);
+            ctx.lineTo(frontX + button3D.width, frontY);
+            ctx.lineTo(frontX + button3D.width, frontY + button3D.height);
+            ctx.lineTo(backX + button3D.width, backY + button3D.height);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Face Superior/Inferior
+            ctx.fillStyle = topColor;
+            ctx.beginPath();
+            ctx.moveTo(backX, backY);
+            ctx.lineTo(frontX, frontY);
+            ctx.lineTo(frontX + button3D.width, frontY);
+            ctx.lineTo(backX + button3D.width, backY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(backX, backY + button3D.height);
+            ctx.lineTo(frontX, frontY + button3D.height);
+            ctx.lineTo(frontX + button3D.width, frontY + button3D.height);
+            ctx.lineTo(backX + button3D.width, backY + button3D.height);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // --- DESENHO DA FACE FRONTAL (Onde fica o texto) ---
+            ctx.shadowBlur = isHovering ? 20 : 10;
+            ctx.shadowColor = isHovering ? '#ff0000' : '#000000';
+            ctx.fillStyle = faceColor;
+            ctx.fillRect(frontX, frontY, button3D.width, button3D.height);
+
+            // Borda Neon na face da frente
             ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(frontX, frontY, button3D.width, button3D.height);
+
+            // Texto centralizado na face frontal
             ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 20px Arial';
+            ctx.font = 'bold 22px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(buttonWorld.label, btnX + buttonWorld.width / 2, btnY + buttonWorld.height / 2);
+            ctx.fillText(button3D.label, frontX + button3D.width / 2, frontY + button3D.height / 2);
 
-            // Barra de carregamento neon acompanhando o botão flutuante
+            // Barra de Progresso Espacial seguindo a base frontal do botão
             if (progress > 0) {
                 ctx.fillStyle = '#00ffcc';
-                ctx.fillRect(btnX, btnY + buttonWorld.height + 5, buttonWorld.width * progress, 6);
+                ctx.fillRect(frontX, frontY + button3D.height + 8, button3D.width * progress, 5);
             }
         }
 
