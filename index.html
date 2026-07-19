@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interface VR Customizada</title>
+    <title>Botão AR Flutuante no Espaço</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
@@ -17,11 +17,10 @@
         }
         body {
             background-color: #000;
-            font-family: 'Segoe UI', Arial, sans-serif;
             overflow: hidden;
             width: 100vw;
             height: 100vh;
-            color: white;
+            font-family: Arial, sans-serif;
         }
         #webcam {
             display: none;
@@ -34,227 +33,109 @@
             left: 0;
             z-index: 1;
         }
-
-        /* --- PAINEL VR FLUTUANTE CENTRALIZADO --- */
-        #vr-panel {
+        /* Botão necessário para pedir permissão dos sensores no iOS */
+        #permissionBtn {
             position: absolute;
-            top: 45%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 90%;
-            max-width: 500px;
-            background: rgba(20, 25, 35, 0.85);
-            border: 2px solid rgba(0, 255, 200, 0.4);
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 255, 200, 0.2);
-            z-index: 10;
-            transition: all 0.3s ease;
-        }
-
-        .panel-section {
-            margin-bottom: 20px;
-        }
-
-        .section-title {
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: #00ffcc;
-            margin-bottom: 12px;
-            font-weight: bold;
-        }
-
-        .environments-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-        }
-        .env-card {
-            height: 55px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 11px;
-            text-align: center;
-            cursor: pointer;
-        }
-
-        .apps-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            justify-items: center;
-        }
-        .app-item {
-            width: 65px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-            cursor: pointer;
-        }
-        .app-icon {
-            width: 45px;
-            height: 45px;
-            background: rgba(255, 0, 100, 0.6);
-            border: 2px solid #ff0064;
-            border-radius: 12px;
-            box-shadow: 0 0 10px rgba(255, 0, 100, 0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 12px;
-        }
-        .app-label {
-            font-size: 11px;
-            color: #ccc;
-            text-align: center;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            width: 100%;
-        }
-
-        /* --- CONTADOR DE SELEÇÃO VR --- */
-        #vr-timer {
-            position: absolute;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: rgba(0, 255, 200, 0.9);
-            color: #000;
-            font-weight: bold;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            pointer-events: none;
-            z-index: 100;
-            box-shadow: 0 0 15px #00ffcc;
-        }
-
-        /* --- JANELA FLUTUANTE (WEB VIEW INTERNA) --- */
-        #floating-browser {
-            position: absolute;
-            bottom: 5%;
+            top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            width: 90%;
-            height: 35%;
-            background: #111;
-            border: 3px solid #00ffcc;
-            border-radius: 15px;
-            box-shadow: 0 0 25px rgba(0, 255, 200, 0.4);
-            display: none;
-            flex-direction: column;
-            overflow: hidden;
-            z-index: 15;
-        }
-        .browser-header {
-            background: #222;
-            padding: 8px 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 12px;
-            border-bottom: 1px solid #333;
-        }
-        .close-btn {
-            color: #ff0064;
-            font-weight: bold;
-            padding: 2px 8px;
-            border: 1px solid #ff0064;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .browser-content {
-            flex: 1;
-            width: 100%;
-            height: 100%;
+            z-index: 10;
+            padding: 12px 24px;
+            background-color: #00ffcc;
+            color: #000;
             border: none;
-            background: white;
-        }
-
-        .vr-interactive {
-            transition: transform 0.2s ease, background-color 0.2s ease;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 0 15px #00ffcc;
         }
     </style>
 </head>
 <body>
 
+    <button id="permissionBtn" onclick="requestOrientationPermission()">Ativar Modo Realidade Aumentada</button>
     <video id="webcam" autoplay playsinline></video>
     <canvas id="canvas"></canvas>
-
-    <div id="vr-timer">3</div>
-
-    <div id="vr-panel">
-        <div class="panel-section">
-            <div class="section-title">Espaços Virtuais</div>
-            <div class="environments-grid">
-                <div class="env-card vr-interactive" data-action="env">Praia</div>
-                <div class="env-card vr-interactive" data-action="env">Cidade</div>
-                <div class="env-card vr-interactive" data-action="env">Espaço</div>
-                <div class="env-card vr-interactive" data-action="env">Deserto</div>
-            </div>
-        </div>
-
-        <div class="panel-section">
-            <div class="section-title">Aplicações</div>
-            <div class="apps-grid">
-                <div class="app-item vr-interactive" data-action="app" data-url="https://www.wikipedia.org">
-                    <div class="app-icon">Wiki</div>
-                    <div class="app-label">Wikipedia</div>
-                </div>
-                <div class="app-item vr-interactive" data-action="app" data-url="https://www.bing.com">
-                    <div class="app-icon">Bing</div>
-                    <div class="app-label">Navegador</div>
-                </div>
-                <div class="app-item vr-interactive" data-action="app" data-url="https://eddmann.com">
-                    <div class="app-icon">Game</div>
-                    <div class="app-label">Mini Jogos</div>
-                </div>
-                <div class="app-item vr-interactive" data-action="close-panel">
-                    <div class="app-icon" style="background:rgba(80,80,80,0.6); border-color:#aaa;">Ocultar</div>
-                    <div class="app-label">Fechar</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="floating-browser">
-        <div class="browser-header">
-            <span id="browser-title">Navegador VR</span>
-            <div class="close-btn vr-interactive" data-action="close-browser">Fechar X</div>
-        </div>
-        <iframe id="browser-iframe" class="browser-content" src=""></iframe>
-    </div>
 
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const vrTimer = document.getElementById('vr-timer');
-        const floatingBrowser = document.getElementById('floating-browser');
-        const browserIframe = document.getElementById('browser-iframe');
-        const browserTitle = document.getElementById('browser-title');
-        const vrPanel = document.getElementById('vr-panel');
+        const permissionBtn = document.getElementById('permissionBtn');
 
-        let hoverElement = null;
+        // Posição base do botão no centro do mundo virtual
+        const buttonWorld = {
+            x: 0, 
+            y: 0,
+            width: 180,
+            height: 60,
+            label: 'YouTube'
+        };
+
+        // Variáveis de orientação do celular (Giroscópio)
+        let initialAlpha = null;
+        let initialBeta = null;
+        let currentAlpha = 0;
+        let currentBeta = 0;
+
+        // Sensibilidade do movimento (ajuste se achar que ele move muito ou pouco)
+        const sensitivity = 15; 
+
+        // Controle do Timer de Toque
         let hoverStartTime = null;
-        const TIME_TO_CLICK = 2000; 
+        const hoverDuration = 2000; 
+        let progress = 0;
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            // Centraliza a posição inicial do mundo no meio da tela
+            buttonWorld.x = canvas.width / 2 - buttonWorld.width / 2;
+            buttonWorld.y = canvas.height / 2 - buttonWorld.height / 2;
         }
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
+        // --- LÓGICA DO GIROSCÓPIO ---
+        function requestOrientationPermission() {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                // iOS 13+ exige permissão explícita
+                DeviceOrientationEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation);
+                            permissionBtn.style.display = 'none';
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                // Android e outros navegadores antigos
+                window.addEventListener('deviceorientation', handleOrientation);
+                permissionBtn.style.display = 'none';
+            }
+        }
+
+        function handleOrientation(event) {
+            // Guarda a rotação inicial como o "ponto zero" do espaço real
+            if (initialAlpha === null && event.alpha !== null) {
+                initialAlpha = event.alpha;
+                initialBeta = event.beta;
+            }
+
+            // Calcula a diferença de rotação de quando você iniciou
+            if (initialAlpha !== null) {
+                // Direita / Esquerda (Yaw)
+                let diffAlpha = event.alpha - initialAlpha;
+                if (diffAlpha > 180) diffAlpha -= 360;
+                if (diffAlpha < -180) diffAlpha += 360;
+                currentAlpha = diffAlpha;
+
+                // Cima / Baixo (Pitch)
+                currentBeta = event.beta - initialBeta;
+            }
+        }
+
+        // --- CONFIGURAÇÃO MEDIAPIPE ---
         const hands = new Hands({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
         });
@@ -278,27 +159,88 @@
             ctx.save();
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // --- ESPELHAMENTO DA CÂMERA (Essencial para UX intuitiva) ---
+            // Espelhamento da câmera de fundo
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
             ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
 
+            let fingerTipX = null;
+            let fingerTipY = null;
+
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 const landmarks = results.multiHandLandmarks[0];
-
                 drawNeonHand(landmarks);
 
+                // Landmark 8 (Ponta do indicador)
                 const indexTip = landmarks[8];
-                
-                // Mapeia as coordenadas invertendo o X para casar com o espelhamento do DOM
-                const fx = (1 - indexTip.x) * canvas.width;
-                const fy = indexTip.y * canvas.height;
-
-                updateVrInteraction(fx, fy);
-            } else {
-                resetVrTimer();
+                fingerTipX = (1 - indexTip.x) * canvas.width;
+                fingerTipY = indexTip.y * canvas.height;
             }
+
             ctx.restore();
+
+            // Desenhamos a interface que se move com os sensores
+            drawARInterface(fingerTipX, fingerTipY);
+        }
+
+        function drawARInterface(fingerX, fingerY) {
+            // Calcula o deslocamento do botão baseado em como você inclina o telefone
+            // Se você virar o celular para a esquerda (alpha positivo), o botão se move para a direita na tela
+            const offsetX = currentAlpha * sensitivity;
+            const offsetY = currentBeta * sensitivity;
+
+            // Posição final recalculada do botão na tela atual
+            const btnX = buttonWorld.x + offsetX;
+            const btnY = buttonWorld.y + offsetY;
+
+            let isHovering = false;
+
+            // Verifica colisão do dedo com a nova posição flutuante do botão
+            if (fingerX !== null && fingerY !== null) {
+                if (fingerX >= btnX && fingerX <= btnX + buttonWorld.width &&
+                    fingerY >= btnY && fingerY <= btnY + buttonWorld.height) {
+                    isHovering = true;
+                }
+            }
+
+            // Lógica do Timer
+            if (isHovering) {
+                if (!hoverStartTime) hoverStartTime = Date.now();
+                const elapsedTime = Date.now() - hoverStartTime;
+                progress = Math.min(elapsedTime / hoverDuration, 1);
+
+                if (elapsedTime >= hoverDuration) {
+                    hoverStartTime = null; 
+                    progress = 0;
+                    window.open('https://www.youtube.com', '_blank');
+                }
+            } else {
+                hoverStartTime = null;
+                progress = 0;
+            }
+
+            // --- DESENHO DO BOTÃO FLUTUANTE ---
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = isHovering ? '#ff0000' : '#cc0000';
+            ctx.fillStyle = isHovering ? '#ff0000' : '#ff3333';
+            
+            ctx.beginPath();
+            ctx.roundRect(btnX, btnY, buttonWorld.width, buttonWorld.height, 10);
+            ctx.fill();
+
+            // Texto do Botão
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(buttonWorld.label, btnX + buttonWorld.width / 2, btnY + buttonWorld.height / 2);
+
+            // Barra de carregamento neon acompanhando o botão flutuante
+            if (progress > 0) {
+                ctx.fillStyle = '#00ffcc';
+                ctx.fillRect(btnX, btnY + buttonWorld.height + 5, buttonWorld.width * progress, 6);
+            }
         }
 
         function drawNeonHand(landmarks) {
@@ -331,73 +273,6 @@
                 ctx.fillStyle = '#ff0064';
                 ctx.fill();
             });
-        }
-
-        function updateVrInteraction(x, y) {
-            const element = document.elementFromPoint(x, y);
-            const interactiveEl = element ? element.closest('.vr-interactive') : null;
-
-            if (interactiveEl) {
-                vrTimer.style.display = 'flex';
-                vrTimer.style.left = `${x - 20}px`;
-                vrTimer.style.top = `${y - 60}px`;
-
-                if (hoverElement !== interactiveEl) {
-                    if (hoverElement) hoverElement.style.transform = 'scale(1)';
-                    hoverElement = interactiveEl;
-                    hoverStartTime = Date.now();
-                    interactiveEl.style.transform = 'scale(1.1)';
-                }
-
-                const elapsed = Date.now() - hoverStartTime;
-                const remaining = Math.ceil((TIME_TO_CLICK - elapsed) / 1000);
-
-                if (remaining >= 0) {
-                    vrTimer.innerText = remaining;
-                }
-
-                if (elapsed >= TIME_TO_CLICK) {
-                    triggerVrClick(interactiveEl);
-                    resetVrTimer();
-                }
-            } else {
-                resetVrTimer();
-            }
-        }
-
-        function resetVrTimer() {
-            if (hoverElement) {
-                hoverElement.style.transform = 'scale(1)';
-            }
-            hoverElement = null;
-            hoverStartTime = null;
-            vrTimer.style.display = 'none';
-        }
-
-        function triggerVrClick(element) {
-            const action = element.getAttribute('data-action');
-            
-            if (action === 'app') {
-                const url = element.getAttribute('data-url');
-                const label = element.querySelector('.app-label').innerText;
-                browserTitle.innerText = label;
-                browserIframe.src = url;
-                floatingBrowser.style.display = 'flex';
-                vrPanel.style.opacity = '0.3'; 
-            } 
-            else if (action === 'close-browser') {
-                floatingBrowser.style.display = 'none';
-                browserIframe.src = "";
-                vrPanel.style.opacity = '1';
-            }
-            else if (action === 'close-panel') {
-                vrPanel.style.opacity = '0.1';
-            }
-            else if (action === 'env') {
-                element.style.backgroundColor = 'rgba(0, 255, 200, 0.4)';
-                setTimeout(() => { element.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'; }, 800);
-                vrPanel.style.opacity = '1';
-            }
         }
     </script>
 </body>
